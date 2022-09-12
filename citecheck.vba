@@ -84,7 +84,6 @@ LFound:
         ' find the range of text to copy
         Set rngText = docText.Range(ichFirst, ftn.Reference.Start)
         ichFirst = ftn.Reference.End
-        'MsgBox "Body text: " & rngText.Text
         
         ' find the footnote text to copy
         ichFtnFirst = ftn.Range.Start
@@ -102,7 +101,6 @@ LBreak:
         Set rngFtn = ftn.Range.Duplicate
         rngFtn.Start = ichFtnFirst
         rngFtn.End = ichFtnMac
-        'MsgBox "Footnote text: " & rngFtn.Text
         
         ' clone the last 2 table rows
         crow = tblRpt.Rows.Count
@@ -120,9 +118,68 @@ LBreak:
         PasteAfterColon tblRpt.Rows(crow - 1).Cells(2).Range
                         
         ' copy footnote text after "ENTIRE ORIGINAL CITATION" in even row
-        ' TODO: break string cites (on the semicolon... and break out signals?)
         rngFtn.Copy
         PasteAfterColon tblRpt.Rows(crow).Cells(2).Range
+        
+        ' find range for subpart
+        Dim rngSub As Range
+        Set rngSub = tblRpt.Rows(crow).Cells(2).Range.Duplicate
+        Set fndSub = rngSub.Find
+        fndSub.Execute "SUBPART 1: "
+        If Not fndSub.Found Then
+            MsgBox "Missing SUBPART 1:, aborting.", vbMsgExclamation Or vbOKOnly
+            End
+        End If
+        rngSub.End = tblRpt.Rows(crow).Cells(2).Range.End - 1 ' cell mark
+        'MsgBox "[" & rngSub.Text & "]"
+
+        ' break string cites (at semicolon, "dumb" for now; may want to consider periods too?)
+        ichStart = rngFtn.Start
+        Do
+            Dim rngSplit As Range
+            Set rngSplit = rngFtn.Duplicate ' because find result clobbers
+            rngSplit.Start = ichStart
+            Dim fnd As Find
+            Set fnd = rngSplit.Find
+            
+            fnd.Execute "; "
+            If fnd.Found Then
+                ichNext = rngSplit.End
+                rngSplit.Start = ichStart
+                rngSplit.End = ichNext - 2
+                ichStart = ichNext
+            End If
+            
+            Dim rngNext As Range
+            If fnd.Found Then
+'                ' paste in another subpart
+                Selection.SetRange rngSub.End, rngSub.End
+                Selection.TypeText vbCrLf & vbCrLf
+                rngSub.Copy
+                Selection.Paste
+
+                Set rngNext = rngSub.Duplicate
+                rngNext.Start = rngSub.End + 2 ' newlines
+                rngNext.End = tblRpt.Rows(crow).Cells(2).Range.End - 1 ' cell mark
+
+                ' bump the count [not dealing with double digits; be insane on your own time]
+                Dim rngI As Range
+                Set rngI = rngNext.Duplicate
+                rngI.Start = rngI.Start + 8 ' subpart number
+                rngI.End = rngI.Start + 1
+                rngI.Text = CStr(CInt(rngI.Text) + 1)
+            End If
+            
+            rngSplit.Copy
+            'MsgBox "[" & rngSplit.Text & "]"
+            
+            PasteAfterColon rngSub
+            
+            Set rngSub = rngNext
+            If Not fnd.Found Then
+                Exit Do
+            End If
+        Loop
     Next
 
     ' always delete the last table row (there's no final footnote, just a possibility of text)
