@@ -4,12 +4,36 @@
 
 Option Explicit
 
+
 Private Sub PasteAfterColon(rng As Range)
     Dim ichText As Long
     ichText = rng.Start + InStr(rng.Text, ": ") + 1
     Selection.SetRange ichText, ichText
     Selection.Paste
 End Sub
+
+
+Private Function FHasQuotation(s As String) As Boolean
+    FHasQuotation = s Like "*“*”*" ' very limited; can't exclude, say, single words in quotes
+End Function
+
+
+' Returns best guess at source type (using dropdown values), empty string if no guess.
+Private Function SourceType(rng As Range) As String
+    Dim s As String
+    s = rng.Text
+    
+    ' low-hanging fruit...
+    If StrComp(Left(s, 3), "Id.", vbTextCompare) = 0 Then
+        SourceType = "id"
+    ElseIf InStr(s, ", supra ") > 0 Then
+        SourceType = "supra"
+    ElseIf InStr(s, ", infra ") > 0 Then ' internal cross-ref, need to add (not in cheat sheet)
+        SourceType = "infra"
+    End If
+    ' leaving more complex types for later
+End Function
+
 
 Sub CreateCiteCheck()
     ' find the article document: use the first with a selection with footnotes
@@ -131,6 +155,21 @@ LBreak:
         rngFtn.Copy
         PasteAfterColon tblRpt.Rows(crow).Cells(2).Range
         
+        ' [[ check text content
+        
+        Dim sText As String
+        sText = rngText.Text
+        If FHasQuotation(sText) Then
+            Dim ccQuote As ContentControl
+            Set ccQuote = CcNext(docRpt, tblRpt.Rows(crow - 1).Cells(2).Range.Start + Len(sText), "!quote")
+            If Not ccQuote Is Nothing Then
+                ccQuote.Checked = True
+                Call OnExit_Delta(ccQuote)
+            End If
+        End If
+        
+        ' ]] check text content
+        
         ' find range for subpart
         Dim rngSub As Range
         Set rngSub = tblRpt.Rows(crow).Cells(2).Range.Duplicate
@@ -192,13 +231,43 @@ LBreak:
             
             PasteAfterColon rngSub
             
+            ' [[ check footnote subpart content
+            
             ' try to determine the signal and set the dropdown
             Dim ccSig As ContentControl
             Set ccSig = CcNext(docRpt, rngSub.Start, "!sig")
+            Dim cchSig As Long
             If Not ccSig Is Nothing Then
-                Debug.Print FindAndSelectSignal(ccSig, rngSplit.Text) 'TODO Call
+                cchSig = Len(FindAndSelectSignal(ccSig, rngSplit.Text))
                 Call OnExit_Delta(ccSig)
             End If
+            
+            ' flag quotation if it has one
+            If FHasQuotation(rngSplit.Text) Then
+                Set ccQuote = CcNext(docRpt, rngSub.Start, "!quote")
+                If Not ccQuote Is Nothing Then
+                    ccQuote.Checked = True
+                    Call OnExit_Delta(ccQuote)
+                End If
+            End If
+            
+            ' try to determine source type
+            Dim sSrc As String
+            sSrc = SourceType(rngSplit)
+            If sSrc <> "" Then
+                Dim ccSrc As ContentControl
+                Set ccSrc = CcNext(docRpt, rngSub.Start, "!source")
+                Dim entry As ContentControlListEntry
+                For Each entry In ccSrc.DropdownListEntries
+                    If entry.Value = sSrc Then
+                        entry.Select
+                        Call OnExit_Delta(ccSrc)
+                        Exit For
+                    End If
+                Next
+            End If
+            
+            ' ]] check footnote subpart content
             
             Set rngSub = rngNext
             If Not fnd.Found Then
