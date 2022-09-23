@@ -240,6 +240,7 @@ LBreak:
             If Not ccSig Is Nothing Then
                 cchSig = Len(FindAndSelectSignal(ccSig, rngSplit.Text))
                 Call OnExit_Delta(ccSig)
+                If cchSig > 0 Then cchSig = cchSig + 1 ' space
             End If
             
             ' flag quotation if it has one
@@ -253,7 +254,10 @@ LBreak:
             
             ' try to determine source type
             Dim sSrc As String
-            sSrc = SourceType(rngSplit)
+            Dim rngSrc As Range
+            Set rngSrc = rngSplit.Duplicate
+            rngSrc.Start = rngSrc.Start + cchSig
+            sSrc = SourceType(rngSrc)
             If sSrc <> "" Then
                 Dim ccSrc As ContentControl
                 Set ccSrc = CcNext(docRpt, rngSub.Start, "!source")
