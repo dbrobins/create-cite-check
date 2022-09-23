@@ -107,6 +107,8 @@ LFound:
     End If
     docRpt.Activate
 
+    Application.ScreenUpdating = False
+
     ' loop over the footnotes in the range
     Dim iftn As Long
     For iftn = iftnFirst To iftnLast
@@ -292,6 +294,8 @@ LBreak:
     Else
         tblRpt.Rows(crow - 1).Delete
     End If
+
+    Application.ScreenUpdating = True
 End Sub
 
 
