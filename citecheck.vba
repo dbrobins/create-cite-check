@@ -196,15 +196,20 @@ LBreak:
             Set fnd = rngSplit.Find
             
             fnd.Execute "; "
-            If fnd.Found Then
+            Dim fFound As Boolean
+            fFound = fnd.Found
+            If fFound Then
                 ichNext = rngSplit.End
                 rngSplit.Start = ichStart
                 rngSplit.End = ichNext - 2 ' "; "
                 ichStart = ichNext
+                
+                ' prevent sorcerer's apprentice on trailing ";"
+                If ichNext >= rngFtn.End Then fFound = False
             End If
             
             Dim rngNext As Range
-            If fnd.Found Then
+            If fFound Then
                 ' paste in another subpart
                 ' doing Selection.SetRange and .TypeText vbCrLf & vbCrLf used to work, but not just after a CC
                 ' add replacing the .TypeText with two .InsertParagraphAfters to list of what doesn't work
@@ -276,7 +281,7 @@ LBreak:
             ' ]] check footnote subpart content
             
             Set rngSub = rngNext
-            If Not fnd.Found Then
+            If Not fFound Then
                 Exit Do
             End If
         Loop
