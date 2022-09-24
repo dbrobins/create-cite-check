@@ -316,7 +316,7 @@ Public Function FindAndSelectSignal(cc As ContentControl, sCite As String) As St
         End If
         Dim cch As Long
         cch = Len(sEntry)
-        If cch > cchLongest And Mid(sCite, 1, cch) = sEntry Then
+        If cch > cchLongest And StrComp(Mid(sCite, 1, cch), sEntry, vbTextCompare) = 0 Then
             entry.Select
             FindAndSelectSignal = sEntry
             ' no early exit because want to keep longest
